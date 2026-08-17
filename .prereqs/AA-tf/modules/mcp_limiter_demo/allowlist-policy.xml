@@ -11,10 +11,9 @@
   See also https://learn.microsoft.com/en-us/azure/api-management/expose-existing-mcp-server
 
   - tools/list requests never reach the backend; APIM synthesizes a response containing only
-    the allow-listed tools (microsoft_docs_search).
-  - tools/call requests for denied tools (microsoft_docs_fetch, microsoft_code_sample_search)
-    are short-circuited with a JSON-RPC "Method not found" (-32601) error before reaching the
-    backend.
+    the allow-listed tools (microsoft_docs_search, microsoft_docs_fetch).
+  - tools/call requests for the denied tool (microsoft_code_sample_search) are short-circuited
+    with a JSON-RPC "Method not found" (-32601) error before reaching the backend.
   - Everything else (initialize, ping, tools/call for allowed tools, etc.) passes through
     untouched.
 
@@ -70,6 +69,19 @@
                               ))
                           ))
                       ))
+                  ),
+                  new Newtonsoft.Json.Linq.JObject(
+                      new Newtonsoft.Json.Linq.JProperty("name", "microsoft_docs_fetch"),
+                      new Newtonsoft.Json.Linq.JProperty("description", "Fetch a Microsoft documentation page as markdown"),
+                      new Newtonsoft.Json.Linq.JProperty("inputSchema", new Newtonsoft.Json.Linq.JObject(
+                          new Newtonsoft.Json.Linq.JProperty("type", "object"),
+                          new Newtonsoft.Json.Linq.JProperty("properties", new Newtonsoft.Json.Linq.JObject(
+                              new Newtonsoft.Json.Linq.JProperty("url", new Newtonsoft.Json.Linq.JObject(
+                                  new Newtonsoft.Json.Linq.JProperty("type", "string")
+                              ))
+                          )),
+                          new Newtonsoft.Json.Linq.JProperty("required", new Newtonsoft.Json.Linq.JArray("url"))
+                      ))
                   )
               );
 
@@ -90,9 +102,8 @@
           if (body == null) { return false; }
           var rpcMethod = (string)body["method"];
           var toolName = (string)body["params"]?["name"];
-          var deniedTools = new[] { "microsoft_docs_fetch", "microsoft_code_sample_search" };
           return string.Equals(rpcMethod, "tools/call", System.StringComparison.OrdinalIgnoreCase)
-              && System.Linq.Enumerable.Any(deniedTools, denied => string.Equals(toolName, denied, System.StringComparison.OrdinalIgnoreCase));
+              && string.Equals(toolName, "microsoft_code_sample_search", System.StringComparison.OrdinalIgnoreCase);
         }">
         <return-response>
           <set-status code="200" reason="OK" />
@@ -102,14 +113,13 @@
           <set-body>@{
               var req = (Newtonsoft.Json.Linq.JObject)context.Variables["mcpRequestBody"];
               var id = req != null ? req["id"] : Newtonsoft.Json.Linq.JValue.CreateNull();
-              var toolName = (string)req?["params"]?["name"];
 
               var error = new Newtonsoft.Json.Linq.JObject(
                   new Newtonsoft.Json.Linq.JProperty("jsonrpc", "2.0"),
                   new Newtonsoft.Json.Linq.JProperty("id", id),
                   new Newtonsoft.Json.Linq.JProperty("error", new Newtonsoft.Json.Linq.JObject(
                       new Newtonsoft.Json.Linq.JProperty("code", -32601),
-                      new Newtonsoft.Json.Linq.JProperty("message", "Tool disabled by API Management policy: " + toolName)
+                      new Newtonsoft.Json.Linq.JProperty("message", "Tool disabled by API Management policy: microsoft_code_sample_search")
                   ))
               );
 
