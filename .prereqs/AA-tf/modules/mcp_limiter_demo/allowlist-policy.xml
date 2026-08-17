@@ -32,9 +32,18 @@
   <!-- Throttle, authorize, validate, cache, or transform the requests -->
   <inbound>
     <base />
+    <!--
+      Read/parse the JSON-RPC request body exactly once (preserveContent: true keeps the
+      original stream intact for the backend), and stash the parsed JObject in a variable.
+      Re-calling context.Request.Body.As<JObject>() from multiple <when> conditions/expressions
+      was observed to break APIM's MCP passthrough forwarder for allowed (forwarded) calls -
+      "Value cannot be null. (Parameter 'source')" during forward-request - even though the
+      policy logic itself evaluated correctly. Parsing once avoids that.
+    -->
+    <set-variable name="mcpRequestBody" value="@(context.Request.Body.As<Newtonsoft.Json.Linq.JObject>(preserveContent: true))" />
     <choose>
       <when condition="@{
-          var body = context.Request.Body.As<Newtonsoft.Json.Linq.JObject>(preserveContent: true);
+          var body = (Newtonsoft.Json.Linq.JObject)context.Variables["mcpRequestBody"];
           if (body == null) { return false; }
           var rpcMethod = (string)body["method"];
           return string.Equals(rpcMethod, "tools/list", System.StringComparison.OrdinalIgnoreCase);
@@ -45,7 +54,7 @@
             <value>application/json</value>
           </set-header>
           <set-body>@{
-              var req = context.Request.Body.As<Newtonsoft.Json.Linq.JObject>(preserveContent: true);
+              var req = (Newtonsoft.Json.Linq.JObject)context.Variables["mcpRequestBody"];
               var id = req != null ? req["id"] : Newtonsoft.Json.Linq.JValue.CreateNull();
 
               var tools = new Newtonsoft.Json.Linq.JArray(
@@ -89,7 +98,7 @@
         </return-response>
       </when>
       <when condition="@{
-          var body = context.Request.Body.As<Newtonsoft.Json.Linq.JObject>(preserveContent: true);
+          var body = (Newtonsoft.Json.Linq.JObject)context.Variables["mcpRequestBody"];
           if (body == null) { return false; }
           var rpcMethod = (string)body["method"];
           var toolName = (string)body["params"]?["name"];
@@ -102,7 +111,7 @@
             <value>application/json</value>
           </set-header>
           <set-body>@{
-              var req = context.Request.Body.As<Newtonsoft.Json.Linq.JObject>(preserveContent: true);
+              var req = (Newtonsoft.Json.Linq.JObject)context.Variables["mcpRequestBody"];
               var id = req != null ? req["id"] : Newtonsoft.Json.Linq.JValue.CreateNull();
 
               var error = new Newtonsoft.Json.Linq.JObject(
