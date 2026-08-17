@@ -1,6 +1,7 @@
 # Azure APIM MCP Gateway demo
 
-- Created and maintained by **[Katie Kodes](https://katiekodes.com/)**, 8/17/2026
+- Created and maintained by **[Katie Kodes](https://katiekodes.com/)**, 8/17/2026.
+- Accompanying blog post:  "[How to censor MCP servers with Azure APIM](https://katiekodes.com/censor-mcp-with-apim/)"
 
 Azure APIM to disable specific tools from MCP servers, to cut off legs of the lethal trifecta stool.
 
