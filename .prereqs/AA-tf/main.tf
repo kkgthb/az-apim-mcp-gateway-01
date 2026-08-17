@@ -37,7 +37,7 @@ resource "azurerm_resource_group" "my_resource_group" {
 }
 
 module "apimanagement" {
-  source = "./modules/apimanagement"
+  source = "./modules/shared_apim_instance"
   providers = {
     azurerm = azurerm.demo
   }
