@@ -18,9 +18,9 @@ resource "azapi_resource" "mslearn_mcp_api" {
       subscriptionRequired = false
       mcpProperties = {
         transportType = "streamable" # Valid options are "sse" and "streamable"
-        endpoints = [
-          { name = "message", uriTemplate = "/mcp" }
-        ]
+        endpoints = {
+          message = { uriTemplate = "/mcp" }
+        }
       }
     }
   }
