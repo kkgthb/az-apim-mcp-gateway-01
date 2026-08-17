@@ -10,3 +10,20 @@ data "azurerm_client_config" "current_azurerm_config" {
     }
   }
 }
+
+resource "random_string" "my_apim_generated_name" {
+  length  = 13
+  lower   = true
+  numeric = false
+  special = false
+  upper   = false
+}
+
+resource "azurerm_api_management" "my_apim" {
+  name                = "apim${random_string.my_apim_generated_name.result}"
+  location            = var.resource_group.location
+  resource_group_name = var.resource_group.name
+  publisher_name      = "Demo Publisher"
+  publisher_email     = "admin@example.com"
+  sku_name            = "Consumption_0"
+}
