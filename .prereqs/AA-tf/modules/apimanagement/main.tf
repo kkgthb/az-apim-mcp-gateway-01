@@ -27,5 +27,5 @@ resource "azurerm_api_management" "my_apim" {
   publisher_email     = "admin@example.com"
   # MCP Servers in APIM require Developer/Basic/Basic v2/Standard/Standard v2/Premium/Premium v2.
   # The Consumption tier does not support MCP servers, so Basic v2 is used here (cheapest supported tier).
-  sku_name            = "BasicV2_1"
+  sku_name = "BasicV2_1"
 }

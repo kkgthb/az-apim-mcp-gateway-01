@@ -9,6 +9,6 @@ variable "resource_group" {
 }
 
 variable "workload_nickname" {
-  type = string
+  type     = string
   nullable = false
 }
