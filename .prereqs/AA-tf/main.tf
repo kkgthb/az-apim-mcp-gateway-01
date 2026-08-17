@@ -41,10 +41,16 @@ module "apimanagement" {
   providers = {
     azurerm = azurerm.demo
   }
-  resource_group = {
-    id       = azurerm_resource_group.my_resource_group.id
-    name     = azurerm_resource_group.my_resource_group.name
-    location = azurerm_resource_group.my_resource_group.location
+  resource_group    = azurerm_resource_group.my_resource_group
+  workload_nickname = var.workload_nickname
+}
+
+module "mcplimiterdemo" {
+  source = "./modules/mcp_limiter_demo"
+  providers = {
+    azapi = azapi.demo
   }
+  apim_instance     = module.apimanagement.apim_instance
+  resource_group    = azurerm_resource_group.my_resource_group
   workload_nickname = var.workload_nickname
 }
