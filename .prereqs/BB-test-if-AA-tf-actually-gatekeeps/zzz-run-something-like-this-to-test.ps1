@@ -17,7 +17,7 @@ Push-Location("$PsScriptRoot")
 $tfstate_file = [System.IO.Path]::GetFullPath([System.IO.Path]::Combine($PSScriptRoot, '..', 'AA-tf', 'terraform.tfstate'))
 Try {
     $apim_name = (jq -r '.outputs.apim_name.value' $tfstate_file)
-    [Environment]::SetEnvironmentVariable('MSLEARN_MCP_GATEKEPT_BASE_URL', "https://$apim_name.azure-api.net/mslearn-mcp/mcp", 'Process')
+    [Environment]::SetEnvironmentVariable('MSLEARN_MCP_GATEKEPT_BASE_URL', "https://$apim_name.azure-api.net/mslearn-mcp/api/mcp", 'Process')
     [Environment]::GetEnvironmentVariable('MSLEARN_MCP_GATEKEPT_BASE_URL')
     npm run test
 }
