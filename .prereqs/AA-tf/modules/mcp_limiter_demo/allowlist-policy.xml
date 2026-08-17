@@ -1,0 +1,135 @@
+<!--
+  Option A: static allowlist policy for the gated Microsoft Learn MCP server.
+
+  Because this API proxies an *external* MCP server, APIM never materializes the backend's
+  tools as `operations` (confirmed via the portal: "API Management cannot display operations
+  for external MCP servers"). That means the native `apis/tools` allow-list mechanism doesn't
+  apply here at all - the only way to control which tools are exposed is to intercept the raw
+  JSON-RPC traffic in a policy, as described in:
+  https://techcommunity.microsoft.com/blog/appsonazureblog/controlling-tool-access-with-apim-mcp-gateway/4529225
+
+  See also https://learn.microsoft.com/en-us/azure/api-management/expose-existing-mcp-server
+
+  - tools/list requests never reach the backend; APIM synthesizes a response containing only
+    the allow-listed tools (microsoft_docs_search, microsoft_docs_fetch).
+  - tools/call requests for the denied tool (microsoft_code_sample_search) are short-circuited
+    with a JSON-RPC "Method not found" (-32601) error before reaching the backend.
+  - Everything else (initialize, ping, tools/call for allowed tools, etc.) passes through
+    untouched.
+
+  <base /> is included in every section (matching the portal's default policy scaffold) so any
+  global- or product-scoped policies (auth, rate limiting, etc.) still get inherited. It's placed
+  first in <inbound>, so those inherited policies run before the tools/list and tools/call
+  interception below.
+-->
+<!--
+    - Policies are applied in the order they appear.
+    - Position <base/> inside a section to inherit policies from the outer scope.
+    - Comments within policies are not preserved.
+-->
+<!-- Add policies as children to the <inbound>, <outbound>, <backend>, and <on-error> elements -->
+<policies>
+  <!-- Throttle, authorize, validate, cache, or transform the requests -->
+  <inbound>
+    <base />
+    <choose>
+      <when condition="@{
+          var body = context.Request.Body.As<Newtonsoft.Json.Linq.JObject>(preserveContent: true);
+          if (body == null) { return false; }
+          var rpcMethod = (string)body["method"];
+          return string.Equals(rpcMethod, "tools/list", System.StringComparison.OrdinalIgnoreCase);
+        }">
+        <return-response>
+          <set-status code="200" reason="OK" />
+          <set-header name="Content-Type" exists-action="override">
+            <value>application/json</value>
+          </set-header>
+          <set-body>@{
+              var req = context.Request.Body.As<Newtonsoft.Json.Linq.JObject>(preserveContent: true);
+              var id = req != null ? req["id"] : Newtonsoft.Json.Linq.JValue.CreateNull();
+
+              var tools = new Newtonsoft.Json.Linq.JArray(
+                  new Newtonsoft.Json.Linq.JObject(
+                      new Newtonsoft.Json.Linq.JProperty("name", "microsoft_docs_search"),
+                      new Newtonsoft.Json.Linq.JProperty("description", "Search official Microsoft/Azure documentation"),
+                      new Newtonsoft.Json.Linq.JProperty("inputSchema", new Newtonsoft.Json.Linq.JObject(
+                          new Newtonsoft.Json.Linq.JProperty("type", "object"),
+                          new Newtonsoft.Json.Linq.JProperty("properties", new Newtonsoft.Json.Linq.JObject(
+                              new Newtonsoft.Json.Linq.JProperty("query", new Newtonsoft.Json.Linq.JObject(
+                                  new Newtonsoft.Json.Linq.JProperty("type", "string")
+                              ))
+                          ))
+                      ))
+                  ),
+                  new Newtonsoft.Json.Linq.JObject(
+                      new Newtonsoft.Json.Linq.JProperty("name", "microsoft_docs_fetch"),
+                      new Newtonsoft.Json.Linq.JProperty("description", "Fetch a Microsoft documentation page as markdown"),
+                      new Newtonsoft.Json.Linq.JProperty("inputSchema", new Newtonsoft.Json.Linq.JObject(
+                          new Newtonsoft.Json.Linq.JProperty("type", "object"),
+                          new Newtonsoft.Json.Linq.JProperty("properties", new Newtonsoft.Json.Linq.JObject(
+                              new Newtonsoft.Json.Linq.JProperty("url", new Newtonsoft.Json.Linq.JObject(
+                                  new Newtonsoft.Json.Linq.JProperty("type", "string")
+                              ))
+                          )),
+                          new Newtonsoft.Json.Linq.JProperty("required", new Newtonsoft.Json.Linq.JArray("url"))
+                      ))
+                  )
+              );
+
+              var response = new Newtonsoft.Json.Linq.JObject(
+                  new Newtonsoft.Json.Linq.JProperty("jsonrpc", "2.0"),
+                  new Newtonsoft.Json.Linq.JProperty("id", id),
+                  new Newtonsoft.Json.Linq.JProperty("result", new Newtonsoft.Json.Linq.JObject(
+                      new Newtonsoft.Json.Linq.JProperty("tools", tools)
+                  ))
+              );
+
+              return response.ToString(Newtonsoft.Json.Formatting.None);
+          }</set-body>
+        </return-response>
+      </when>
+      <when condition="@{
+          var body = context.Request.Body.As<Newtonsoft.Json.Linq.JObject>(preserveContent: true);
+          if (body == null) { return false; }
+          var rpcMethod = (string)body["method"];
+          var toolName = (string)body["params"]?["name"];
+          return string.Equals(rpcMethod, "tools/call", System.StringComparison.OrdinalIgnoreCase)
+              && string.Equals(toolName, "microsoft_code_sample_search", System.StringComparison.OrdinalIgnoreCase);
+        }">
+        <return-response>
+          <set-status code="200" reason="OK" />
+          <set-header name="Content-Type" exists-action="override">
+            <value>application/json</value>
+          </set-header>
+          <set-body>@{
+              var req = context.Request.Body.As<Newtonsoft.Json.Linq.JObject>(preserveContent: true);
+              var id = req != null ? req["id"] : Newtonsoft.Json.Linq.JValue.CreateNull();
+
+              var error = new Newtonsoft.Json.Linq.JObject(
+                  new Newtonsoft.Json.Linq.JProperty("jsonrpc", "2.0"),
+                  new Newtonsoft.Json.Linq.JProperty("id", id),
+                  new Newtonsoft.Json.Linq.JProperty("error", new Newtonsoft.Json.Linq.JObject(
+                      new Newtonsoft.Json.Linq.JProperty("code", -32601),
+                      new Newtonsoft.Json.Linq.JProperty("message", "Tool disabled by API Management policy: microsoft_code_sample_search")
+                  ))
+              );
+
+              return error.ToString(Newtonsoft.Json.Formatting.None);
+          }</set-body>
+        </return-response>
+      </when>
+    </choose>
+  </inbound>
+  <!-- Control if and how the requests are forwarded to services  -->
+  <backend>
+    <base />
+  </backend>
+  <!-- Customize the responses -->
+  <outbound>
+    <base />
+  </outbound>
+  <!-- Handle exceptions and customize error responses  -->
+  <on-error>
+    <base />
+  </on-error>
+</policies>

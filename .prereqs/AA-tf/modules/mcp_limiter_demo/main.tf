@@ -24,3 +24,22 @@ resource "azapi_resource" "mslearn_mcp_api" {
   response_export_values    = ["properties"]
   schema_validation_enabled = false
 }
+
+# Option A (static allowlist) policy: intercepts tools/list and tools/call at the JSON-RPC
+# level, since APIM cannot discover/manage this external MCP server's tools any other way
+# (confirmed in the portal's Tools blade for this API: "Tools are not visible for external MCP
+# servers"). See allowlist-policy.xml for details.
+resource "azapi_resource" "mslearn_mcp_api_policy" {
+  type      = "Microsoft.ApiManagement/service/apis/policies@2025-09-01-preview"
+  name      = "policy"
+  parent_id = azapi_resource.mslearn_mcp_api.id
+
+  body = {
+    properties = {
+      format = "rawxml"
+      value  = file("${path.module}/allowlist-policy.xml")
+    }
+  }
+
+  schema_validation_enabled = false
+}
