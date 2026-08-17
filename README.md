@@ -39,6 +39,58 @@ So instead, this sample repo attaches an APIM **policy** that inspects the raw J
 
 See [`.prereqs/AA-tf/modules/mcp_limiter_demo/allowlist-policy.xml`](.prereqs/AA-tf/modules/mcp_limiter_demo/allowlist-policy.xml) for the actual policy, and its header comment for implementation notes and gotchas encountered along the way (e.g. why the backend must be a separate `backends` resource rather than a bare `serviceUrl`).
 
+## Reference architecture
+
+The Terraform in [`.prereqs/AA-tf/`](.prereqs/AA-tf/) creates this logical architecture:
+
+```mermaid
+flowchart LR
+   client["MCP client<br/>(e.g. Copilot, Claude)"]
+
+   subgraph azure["Azure subscription"]
+      direction TB
+
+      subgraph rg["Resource Group"]
+         direction TB
+
+         subgraph apim["APIM instance"]
+            direction TB
+            api["MCP-typed APIM API<br/>path: /mslearn-mcp/api/mcp"]
+            policy["API policy<br/>allowlist-policy.xml"]
+            backend["APIM backend resource<br/>url: https://learn.microsoft.com"]
+         end
+      end
+   end
+
+   mslearn["Microsoft Learn MCP server<br/>https://learn.microsoft.com/api/mcp"]
+
+   client -->|"JSON-RPC over HTTPS"| api
+   api --> policy
+   policy -->|"allowed calls"| backend
+   backend -->|"proxies to"| mslearn
+   policy -.->|"denied tool call or synthetic tools/list"| client
+```
+
+### Runtime request paths
+
+1. `tools/list` to APIM
+    - APIM policy returns a synthetic tool list containing only:
+       - `microsoft_docs_search`
+       - `microsoft_docs_fetch`
+    - Backend is not called.
+2. `tools/call` for `microsoft_code_sample_search`
+    - APIM policy returns JSON-RPC error `-32601` (method not found).
+    - Backend is not called.
+3. `initialize`, `ping`, and `tools/call` for allow-listed tools
+    - Request is proxied through APIM backend to Microsoft Learn MCP.
+
+### Terraform component mapping
+
+- Resource group: root config in [`.prereqs/AA-tf/main.tf`](.prereqs/AA-tf/main.tf)
+- APIM instance: module [`.prereqs/AA-tf/modules/shared_apim_instance/main.tf`](.prereqs/AA-tf/modules/shared_apim_instance/main.tf)
+- External MCP backend + MCP API + policy: module [`.prereqs/AA-tf/modules/mcp_limiter_demo/main.tf`](.prereqs/AA-tf/modules/mcp_limiter_demo/main.tf)
+- Allow-list logic: [`.prereqs/AA-tf/modules/mcp_limiter_demo/allowlist-policy.xml`](.prereqs/AA-tf/modules/mcp_limiter_demo/allowlist-policy.xml)
+
 ## Repo layout
 
 - **`.prereqs/AA-tf/`** - Terraform that provisions the Azure resources: a resource group, an API
