@@ -133,6 +133,8 @@ flowchart LR
 4. When you're done, run `zzz-run-something-like-this-to-destroy.ps1` (from `.prereqs/AA-tf/`) to
    tear everything down.
 
+_(Note:  You're not lost if you're wondering why there's nothing to do besides run code in `.prereqs`.  Turns out I never came up with anything useful to do with Azure infrastructure besides provision & deprovision it, so it's a bit of a "prereqs to nowhere" repo structure.  🤷‍♀️)_
+
 ## Disclaimer
 
 This is a demo, not a production-ready reference architecture.

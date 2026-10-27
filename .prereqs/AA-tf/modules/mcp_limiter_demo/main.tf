@@ -4,17 +4,13 @@
 # produced a broken passthrough (tools/list returned an empty array and tools/call 500'd
 # internally, confirmed via APIM request tracing). Using a real backend resource + backendId,
 # matching what the portal wizard actually does, is required for passthrough forwarding to work.
-resource "azapi_resource" "mslearn_mcp_backend" {
-  type      = "Microsoft.ApiManagement/service/backends@2025-09-01-preview"
-  name      = "${var.workload_nickname}-mslearn-mcp-backend"
-  parent_id = var.apim_instance.id
-  body = {
-    properties = {
-      protocol = "http" # Confusingly, this just means "HTTP-family", not that TLS is disabled - the url below is https.
-      url      = "https://learn.microsoft.com"
-    }
-  }
-  schema_validation_enabled = false
+# 8/20/26:  A peer pointed out that this doesn't need azapi-preview.
+resource "azurerm_api_management_backend" "mslearn_mcp_backend" {
+  name                = "example-backend"
+  resource_group_name = var.resource_group.name
+  api_management_name = var.apim_instance.name
+  protocol            = "http" # Confusingly, this just means "HTTP-family", not that TLS is disabled - the url below is https.
+  url                 = "https://learn.microsoft.com"
 }
 
 # Registers an external MCP server (Microsoft Learn) as an "mcp"-typed API in APIM. This is
@@ -33,7 +29,7 @@ resource "azapi_resource" "mslearn_mcp_api" {
       protocols            = ["https"]
       type                 = "mcp"
       apiType              = "mcp"
-      backendId            = azapi_resource.mslearn_mcp_backend.name
+      backendId            = azurerm_api_management_backend.mslearn_mcp_backend.name
       subscriptionRequired = false
       mcpProperties = {
         transportType = "streamable" # Valid options are "sse" and "streamable"
@@ -51,17 +47,10 @@ resource "azapi_resource" "mslearn_mcp_api" {
 # level, since APIM cannot discover/manage this external MCP server's tools any other way
 # (confirmed in the portal's Tools blade for this API: "Tools are not visible for external MCP
 # servers"). See allowlist-policy.xml for details.
-resource "azapi_resource" "mslearn_mcp_api_policy" {
-  type      = "Microsoft.ApiManagement/service/apis/policies@2025-09-01-preview"
-  name      = "policy"
-  parent_id = azapi_resource.mslearn_mcp_api.id
-
-  body = {
-    properties = {
-      format = "rawxml"
-      value  = file("${path.module}/allowlist-policy.xml")
-    }
-  }
-
-  schema_validation_enabled = false
+# 8/20/26:  A peer pointed out that this doesn't need azapi-preview.
+resource "azurerm_api_management_api_policy" "mslearn_mcp_api_all_operations_policy" {
+  resource_group_name = var.resource_group.name
+  api_management_name = var.apim_instance.name
+  api_name            = azapi_resource.mslearn_mcp_api.name
+  xml_content         = file("${path.module}/allowlist-policy.xml")
 }

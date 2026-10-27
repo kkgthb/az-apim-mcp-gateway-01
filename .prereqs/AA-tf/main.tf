@@ -48,6 +48,7 @@ module "apimanagement" {
 module "mcplimiterdemo" {
   source = "./modules/mcp_limiter_demo"
   providers = {
+    azurerm = azurerm.demo
     azapi = azapi.demo
   }
   apim_instance     = module.apimanagement.apim_instance

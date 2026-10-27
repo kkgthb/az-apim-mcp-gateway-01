@@ -2,10 +2,15 @@
 
 # Some common things to ignore
 .vscode
+test-results
+*.pem
+
+# NodeJS/NPM artifacts
 node_modules
+
+# Terraform artifacts
 .terraform*
 terraform.tfstate
 terraform.tfstate.backup
-*.pem
-
-test-results
+# Except the versions lockfile, because it is 2026 and we are learning to be responsible supply chain consumers, even in demos
+!.terraform.lock.hcl
