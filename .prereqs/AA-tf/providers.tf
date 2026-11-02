@@ -1,5 +1,5 @@
-# Configure the AzAPI provider (used for Azure resources/preview features not yet
-# supported by azurerm, e.g. the MCP server "apis" and "apis/tools" resource types).
+# Configure the AzAPI provider for the AI Gateway preview resources not yet
+# supported by AzureRM.
 provider "azapi" {
   alias           = "demo"
   tenant_id       = var.entra_tenant_id
