@@ -33,7 +33,11 @@ resource "azapi_resource" "mslearn_mcp_tool_server" {
             # outbound authentication to the MS Learn MCP backend, 
             # but doesn't impact requirements for the calling MCP client to authenticate into the gateway 
             # when POSTing to https://BLAHBLAHBLAH.ai.gateway.azure.com/default/toolservers/mslearn-tools/mcp 
-            # by attaching an `https://ai.azure.com/Data.All`-scoped Entra ID token; blegh.
+            # by attaching an `https://ai.azure.com/Data.All`-scoped Entra ID token.
+            # I think this is stupid because it means letting a potentially-leaky MCP client/harness 
+            # handle a JWT token that was completely unnecessary to get the work done 
+            # and now could potentially be leaked and used in replay attacks, credential harvesting infections, etc.
+            # I think it's dumb that `Microsoft.ApiManagement/aigateways` 100% enforces ingress authentication into itself; blegh.
             type = "none"
           }
           required = true
