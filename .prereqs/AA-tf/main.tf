@@ -33,16 +33,16 @@ data "azapi_client_config" "current_azapi_config" {
 resource "azurerm_resource_group" "my_resource_group" {
   provider = azurerm.demo
   name     = "${var.workload_nickname}-rg-demo"
-  location = "centralus"
+  location = "eastus2"
 }
 
-module "apimanagement" {
-  source = "./modules/shared_apim_instance"
+module "ai_gateway" {
+  source = "./modules/shared_ai_gateway"
   providers = {
-    azurerm = azurerm.demo
+    azapi  = azapi.demo
+    random = random
   }
-  resource_group    = azurerm_resource_group.my_resource_group
-  workload_nickname = var.workload_nickname
+  resource_group = azurerm_resource_group.my_resource_group
 }
 
 module "mcplimiterdemo" {
@@ -50,7 +50,5 @@ module "mcplimiterdemo" {
   providers = {
     azapi = azapi.demo
   }
-  apim_instance     = module.apimanagement.apim_instance
-  resource_group    = azurerm_resource_group.my_resource_group
-  workload_nickname = var.workload_nickname
+  ai_gateway = module.ai_gateway.ai_gateway
 }

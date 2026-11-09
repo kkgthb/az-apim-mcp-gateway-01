@@ -1,67 +1,85 @@
-# The backend for the passthrough MCP server. The portal wizard ("Expose an existing MCP
-# server") creates this as a separate backend resource rather than using the API's serviceUrl
-# field directly - serviceUrl looked accepted by the ARM API (no validation error) but silently
-# produced a broken passthrough (tools/list returned an empty array and tools/call 500'd
-# internally, confirmed via APIM request tracing). Using a real backend resource + backendId,
-# matching what the portal wizard actually does, is required for passthrough forwarding to work.
-resource "azapi_resource" "mslearn_mcp_backend" {
-  type      = "Microsoft.ApiManagement/service/backends@2025-09-01-preview"
-  name      = "${var.workload_nickname}-mslearn-mcp-backend"
-  parent_id = var.apim_instance.id
-  body = {
-    properties = {
-      protocol = "http" # Confusingly, this just means "HTTP-family", not that TLS is disabled - the url below is https.
-      url      = "https://learn.microsoft.com"
-    }
-  }
-  schema_validation_enabled = false
+locals {
+  allowed_tools = [
+    "microsoft_docs_search",
+    "microsoft_docs_fetch",
+  ]
+  blocked_tools = [
+    "microsoft_code_sample_search",
+  ]
 }
 
-# Registers an external MCP server (Microsoft Learn) as an "mcp"-typed API in APIM. This is
-# the resource behind the "MCP Servers" blade in the portal. The azurerm provider does not yet
-# support apiType = "mcp" or its child "tools" resource, so azapi is used instead (per the
-# 2025-09-01-preview Microsoft.ApiManagement/service/apis[/tools] schema).
-resource "azapi_resource" "mslearn_mcp_api" {
-  type      = "Microsoft.ApiManagement/service/apis@2025-09-01-preview"
-  name      = "${var.workload_nickname}-mslearn-mcp"
-  parent_id = var.apim_instance.id
+resource "azapi_resource" "mslearn_mcp_tool_server" {
+  type      = "Microsoft.ApiManagement/aigateways/workspaces/toolServers@2025-09-01-preview"
+  name      = "mslearn-tools"
+  parent_id = "${var.ai_gateway.id}/workspaces/default"
   body = {
     properties = {
-      displayName          = "Microsoft Learn MCP (gated)"
+      name                 = "Microsoft Learn MCP (gated)"
       description          = "Gated proxy of the public Microsoft Learn MCP server. Only an allow-listed subset of its tools is exposed."
-      path                 = "mslearn-mcp"
-      protocols            = ["https"]
       type                 = "mcp"
-      apiType              = "mcp"
-      backendId            = azapi_resource.mslearn_mcp_backend.name
+      allowList            = local.allowed_tools
+      blocked              = local.blocked_tools
       subscriptionRequired = false
-      mcpProperties = {
-        transportType = "streamable" # Valid options are "sse" and "streamable"
-        endpoints = {
-          message = { uriTemplate = "/api/mcp" }
+      endpoints = [
+        {
+          id   = "microsoft-learn"
+          kind = "mcp"
+          mcp = {
+            url       = "https://learn.microsoft.com/api/mcp"
+            transport = "streamableHttp"
+          }
+          credentials = {
+            # Frustrating.  Per LLM, `credentials` only configures the gateway's 
+            # outbound authentication to the MS Learn MCP backend, 
+            # but doesn't impact requirements for the calling MCP client to authenticate into the gateway 
+            # when POSTing to https://BLAHBLAHBLAH.ai.gateway.azure.com/default/toolservers/mslearn-tools/mcp 
+            # by attaching an `https://azure-api.net/aigateway/Data.All`-delegated-scoped, 
+            # `https://azure-api.net/aigateway`-audienced, 
+            # appropriately-Azure-RBAC-role'd token.
+            # I think this is stupid because it means letting a potentially-leaky MCP client/harness 
+            # handle a JWT token that was completely unnecessary to get the work done 
+            # and now could potentially be leaked and used in replay attacks, credential harvesting infections, etc.
+            # I think it's dumb that `Microsoft.ApiManagement/aigateways` 100% enforces ingress authentication into itself; blegh.
+            # Also, if we were, say, protecting an Outlook MCP server or something, 
+            # then this would, I believe, be where we set up the gateway to be able to use OAuth to do 
+            # delegated/on-behalf-of work for whoever is ultimately trying to get through to the Outlook MCP server.
+            # This would, I believe, be part of setting up the gateway to be able to 
+            # obtain an Outlook-scoped token on behalf of (OBO) whichever identity principal passed 
+            # an `https://azure-api.net/aigateway/Data.All`-delegated-scoped token into the gateway.
+            # I think.  That, or such a flow is simply impossible with `Microsoft.ApiManagement/aigateways` 
+            # and a `Microsoft.ApiManagement/aigateways` resource can only talk to a backend as itself under its own permissions.
+            # Which seems weird and to halfway defeat the point of "protecting" MCP servers, 
+            # so I must be misreading things.
+            # LLM says:  "`credentials` configures the gateway's outbound authentication to the backend.
+            # "The documented backend OAuth connection flow does not establish per-caller
+            # "on-behalf-of token exchange. Don't assume the gateway forwards or exchanges
+            # each caller's identity for a backend token."
+            type = "none"
+          }
+          required = true
         }
-      }
+      ]
     }
   }
-  response_export_values    = ["properties"]
+  response_export_values    = ["*"]
   schema_validation_enabled = false
 }
 
-# Option A (static allowlist) policy: intercepts tools/list and tools/call at the JSON-RPC
-# level, since APIM cannot discover/manage this external MCP server's tools any other way
-# (confirmed in the portal's Tools blade for this API: "Tools are not visible for external MCP
-# servers"). See allowlist-policy.xml for details.
-resource "azapi_resource" "mslearn_mcp_api_policy" {
-  type      = "Microsoft.ApiManagement/service/apis/policies@2025-09-01-preview"
-  name      = "policy"
-  parent_id = azapi_resource.mslearn_mcp_api.id
-
+data "azapi_client_config" "current_azapi_login_state" {}
+resource "azapi_resource" "rbac_assignment" {
+  type = "Microsoft.Authorization/roleAssignments@2022-04-01"
+  # The name MUST be a valid, unique GUID. 
+  # uuidv5 guarantees consistency so it doesn't try to recreate on every run.
+  name = uuidv5(
+    "${data.azapi_client_config.current_azapi_login_state.subscription_id}",
+    "dce03f8d-857f-4e40-a90d-67770fa6ecd2-${azapi_resource.mslearn_mcp_tool_server.id}-${data.azapi_client_config.current_azapi_login_state.object_id}"
+  )
+  parent_id = azapi_resource.mslearn_mcp_tool_server.id # target scope to MCP server itself, for starters
   body = {
     properties = {
-      format = "rawxml"
-      value  = file("${path.module}/allowlist-policy.xml")
+      roleDefinitionId = "/subscriptions/${data.azapi_client_config.current_azapi_login_state.subscription_id}/providers/Microsoft.Authorization/roleDefinitions/dce03f8d-857f-4e40-a90d-67770fa6ecd2" # AI Gateway Tools User
+      principalType    = "User"
+      principalId      = "${data.azapi_client_config.current_azapi_login_state.object_id}" # Me
     }
   }
-
-  schema_validation_enabled = false
 }
