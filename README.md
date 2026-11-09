@@ -55,6 +55,22 @@ The end-to-end smoke tests verify that the two allowed tools remain callable and
 3. From `.prereqs/BB-test-if-AA-tf-actually-gatekeeps/`, install dependencies with `npm ci`, then run `zzz-run-something-like-this-to-test.ps1`. The script reads the MCP runtime URL from Terraform output and obtains an Entra token with the `https://azure-api.net/aigateway/Data.All` scope through Azure CLI. If consent is missing, sign in with `az login --scope https://azure-api.net/aigateway/Data.All` and rerun the test.
 4. When finished, run `zzz-run-something-like-this-to-destroy.ps1` from `.prereqs/AA-tf/`.
 
+## Complaints
+
+Although specifying tool allow/deny lists got simpler, the new resource type's **authN**+**authZ** picture is a **big security step down** from the older pure-APIM-based approach, in my opinion:
+
+1. You lose the ability to use APIM policies to middleman security checks within the gateway, like rejecting JWTs unless they were requested on behalf of an MCP client/harness user by OAuth client-app `XYZ` _(e.g. requiring them to have been requested by an Entra Agent ID app registration, rather than the `az` CLI)_.
+2. And yet you also lose the ability to simply let people straight through unauthenticated where applicable, which means you're throwing potentially-good-for-an-hour JWTs into the memory space of potentially leaky _(or potentially targeted by credential harvester endpoint infections like the Sha1-Hulud VSCode extensions)_ MCP clients/harnesses for absolutely no reason at all _(that is, to access MCP servers that don't even require authentication)_.
+
+## Misc. MCP security interesting links
+
+* [OWASP MCP security top 10 misconfigurations](https://owasp.org/projects/mcp-top-10)
+* [OWASP MCP security cheat sheet](https://cheatsheetseries.owasp.org/cheatsheets/MCP_Security_Cheat_Sheet.html)
+* [OWASP MCP security practical guide](https://genai.owasp.org/resource/a-practical-guide-for-secure-mcp-server-development/) _(requires clicking a download button that serves a PDF)_
+* [CIS MCP security controls companion guide](https://learn.cisecurity.org/controls-v8-1-mcp-companion-guide) _(via splash link [advertised here](https://www.cisecurity.org/insights/white-papers/controls-v8-1-model-context-protocol-companion-guide) and [also here](https://www.cisecurity.org/insights/blog/securing-the-integration-protocol))_
+* [Some thoughts from the NSA on MCP security](https://media.defense.gov/2026/Jun/02/2003943289/-1/-1/0/CSI_MCP_SECURITY.PDF)
+* [Non-Human Identity Management Group on MCP security governance frameworks](https://nhimg.org/faq/which-frameworks-should-teams-use-for-mcp-security-governance/)
+
 ## Disclaimer
 
 This is a demo, not a production-ready reference architecture. AI Gateway is in preview; confirm supported behavior and regions before using it for production workloads.
