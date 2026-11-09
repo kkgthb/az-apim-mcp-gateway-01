@@ -64,3 +64,22 @@ resource "azapi_resource" "mslearn_mcp_tool_server" {
   response_export_values    = ["*"]
   schema_validation_enabled = false
 }
+
+data "azapi_client_config" "current_azapi_login_state" {}
+resource "azapi_resource" "rbac_assignment" {
+  type = "Microsoft.Authorization/roleAssignments@2022-04-01"
+  # The name MUST be a valid, unique GUID. 
+  # uuidv5 guarantees consistency so it doesn't try to recreate on every run.
+  name = uuidv5(
+    "${data.azapi_client_config.current_azapi_login_state.subscription_id}",
+    "dce03f8d-857f-4e40-a90d-67770fa6ecd2-${azapi_resource.mslearn_mcp_tool_server.id}-${data.azapi_client_config.current_azapi_login_state.object_id}"
+  )
+  parent_id = azapi_resource.mslearn_mcp_tool_server.id # target scope to MCP server itself, for starters
+  body = {
+    properties = {
+      roleDefinitionId = "/subscriptions/${data.azapi_client_config.current_azapi_login_state.subscription_id}/providers/Microsoft.Authorization/roleDefinitions/dce03f8d-857f-4e40-a90d-67770fa6ecd2" # AI Gateway Tools User
+      principalType    = "User"
+      principalId      = "${data.azapi_client_config.current_azapi_login_state.object_id}" # Me
+    }
+  }
+}
