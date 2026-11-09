@@ -64,7 +64,9 @@ Although specifying tool allow/deny lists got simpler, the new resource type's *
 1. You **lose** the ability to use APIM policies to middleman **granular security checks** performed by the gateway.
    * For example, in the new gateway, you can no longer program it to only accept JWTs for a given MCP server if those JWTs were requested on behalf of an MCP client/harness user by the specific OAuth client-app "`XYZ`."
       * _(e.g. requiring them to have been requested by an Entra Agent ID app registration, rather than the `az` CLI)_
-2. And yet you also lose the ability to simply let people straight through unauthenticated where applicable, which means you're throwing potentially-good-for-an-hour JWTs into the memory space of potentially leaky _(or potentially targeted by credential harvester endpoint infections like the Sha1-Hulud VSCode extensions)_ MCP clients/harnesses for absolutely no reason at all _(that is, to access MCP servers that don't even require authentication)_.
+2. And yet you also lose the ability to simply let people straight through unauthenticated where applicable.
+   * Which means you're throwing potentially-good-for-an-hour JWTs into the memory space of potentially leaky _(or potentially targeted by credential harvester endpoint infections like the Sha1-Hulud VSCode extensions)_ MCP clients/harnesses.
+   * And for absolutely no reason at all _(that is, to access MCP servers that don't even require authentication)_.
 
 ## Misc. MCP security interesting links
 
