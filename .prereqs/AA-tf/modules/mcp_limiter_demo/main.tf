@@ -77,6 +77,10 @@ resource "azapi_resource" "rbac_assignment" {
   parent_id = azapi_resource.mslearn_mcp_tool_server.id # target scope to MCP server itself, for starters
   body = {
     properties = {
+      # Okay, well, I ... guess ... I will admit that one handy thing about not being able to turn auth off 
+      # is that it makes "AI Gateway Tools User" 
+      # potentially a way to do authZ against MCP servers at large.
+      # (Seems sloppy and side-effect-reliance-ey, though, since that'll likely be granted one level up, in reality.)
       roleDefinitionId = "/subscriptions/${data.azapi_client_config.current_azapi_login_state.subscription_id}/providers/Microsoft.Authorization/roleDefinitions/dce03f8d-857f-4e40-a90d-67770fa6ecd2" # AI Gateway Tools User
       principalType    = "User"
       principalId      = "${data.azapi_client_config.current_azapi_login_state.object_id}" # Me
