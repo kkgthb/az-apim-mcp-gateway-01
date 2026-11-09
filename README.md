@@ -18,8 +18,9 @@ Terraform creates a `Microsoft.ApiManagement/aigateways` resource and an MCP too
 The gateway is created in East US 2, one of the preview regions. Terraform exposes the runtime URL returned by the tool-server resource as `mcp_server_gateway_url`; use that output when configuring a client.
 
 ```mermaid
-flowchart LR
+flowchart TD
    client["MCP client"]
+   principal["Identity principal"]
    subgraph azure["Azure subscription"]
       subgraph rg["Resource group"]
          gateway["AI Gateway"]
@@ -28,6 +29,7 @@ flowchart LR
       end
    end
    learn["Microsoft Learn MCP server<br/>learn.microsoft.com/api/mcp"]
+   client -->|"Fetches <code>.../Data.All</code>-scoped token for"| principal
    client -->|"JSON-RPC over HTTPS"| server
    server -->|"allowed tools"| learn
 ```
