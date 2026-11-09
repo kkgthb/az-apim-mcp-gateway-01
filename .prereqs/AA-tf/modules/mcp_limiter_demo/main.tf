@@ -28,6 +28,19 @@ resource "azapi_resource" "mslearn_mcp_tool_server" {
             url       = "https://learn.microsoft.com/api/mcp"
             transport = "streamableHttp"
           }
+          credentials = {
+            # 2026-09-01-preview undocumentedly can manage toolServers as of 11/6/2026, 
+            # but trying to pass in "credentials" is a step too far for it, 
+            # and version 2026-11-01 seems to not actually exist in real life _(`400` `Bad Request` `MissingOrIncorrectVersionParameter`)_, 
+            # so I guess all that remains to be done is wait for Microsoft to fix things, 
+            # update the `type` here & in the parent resource, 
+            # and try again.
+            # 2026-11-01 and various Foundry docs I've seen about integrating with these things 
+            # definitely seem to imply that it should be possible to specify that the MS Learn MCP server doesn't require auth.
+            # https://github.com/Azure/azure-rest-api-specs/blob/180f62a563934f8c0fdd37e0b42845bc110340d3/specification/apimanagement/resource-manager/Microsoft.ApiManagement/AIGateway/AIGatewayToolServer.tsp#L251
+            # https://github.com/Azure/azure-rest-api-specs/blob/180f62a563934f8c0fdd37e0b42845bc110340d3/specification/apimanagement/resource-manager/Microsoft.ApiManagement/AIGateway/stable/2026-11-01/openapi.json#L6305
+            type = "none"
+          }
           required = true
         }
       ]

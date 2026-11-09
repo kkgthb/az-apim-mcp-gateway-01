@@ -16,9 +16,9 @@ resource "azapi_resource" "ai_gateway" {
   }
   body = {
     properties = {}
-    sku = {
-      name = "Premium" # TODO:  downgrade once the free ride is over!
-    }
+    # sku = {
+    #   name = "Standard" # TODO:  downgrade once the free ride is over!
+    # }
   }
   response_export_values    = ["*"]
   schema_validation_enabled = false
