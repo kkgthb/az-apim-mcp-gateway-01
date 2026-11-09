@@ -29,8 +29,8 @@ flowchart TD
       end
    end
    learn["Microsoft Learn MCP server<br/>learn.microsoft.com/api/mcp"]
-   client -->|"Fetches <code>.../Data.All</code>-scoped token for"| principal
-   client -->|"JSON-RPC over HTTPS"| server
+   client -->|"Fetches <br/><code>.../Data.All</code>-scoped<br/> token for"| principal
+   client -->|"<code>.../Data.All</code> <br/>token-bearing <br/>JSON-RPC over HTTPS"| server
    server -->|"allowed tools"| learn
 ```
 
