@@ -22,8 +22,7 @@
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import { McpError } from "@modelcontextprotocol/sdk/types.js";
+import { StreamableHTTPClientTransport, StreamableHTTPError } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { env } from "node:process";
 
 const MSLEARN_MCP_DIRECT_BASE_URL = "https://learn.microsoft.com/api/mcp";
@@ -40,16 +39,15 @@ async function connect(baseUrl: string, bearerToken?: string): Promise<{ client:
   return { client, transport };
 }
 
-async function expectToolCallError(client: Client, toolName: string, args: Record<string, unknown>): Promise<McpError> {
+async function expectToolCallError(client: Client, toolName: string, args: Record<string, unknown>): Promise<StreamableHTTPError> {
   try {
     await client.callTool({ name: toolName, arguments: args });
   } catch (error) {
-    expect(error).toBeInstanceOf(McpError);
-    return error as McpError;
+    expect(error).toBeInstanceOf(StreamableHTTPError);
+    return error as StreamableHTTPError;
   }
-  throw new Error(`Expected calling "${toolName}" to be rejected with a JSON-RPC error, but it succeeded.`);
+  throw new Error(`Expected calling "${toolName}" to be rejected with a StreamableHTTPError error, but it succeeded.`);
 }
-
 
 describe("Direct Microsoft Learn MCP server (baseline: nothing is blocked)", () => {
   let client: Client;
@@ -150,14 +148,13 @@ describe.skipIf(!MSLEARN_MCP_GATEKEPT_BASE_URL)("Gated AI Gateway MCP tool serve
     expect(result.isError).not.toBe(true);
   });
 
-  it("microsoft_code_sample_search is hard-blocked with a JSON-RPC 'method not found' error", async () => {
+  it("microsoft_code_sample_search is hard-blocked with a 404 not found error", async () => {
     const error = await expectToolCallError(client, "microsoft_code_sample_search", {
       query: "azapi_resource example",
       language: "terraform",
     });
-
-    expect(error.code).toBe(-32601);
-    expect(error.message).toContain("microsoft_code_sample_search");
+    expect(error.code).toBe(404);
+    expect(error.message).toContain("Resource not found");
   });
 });
 
