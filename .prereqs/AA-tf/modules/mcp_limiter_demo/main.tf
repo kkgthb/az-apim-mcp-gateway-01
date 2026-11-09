@@ -29,11 +29,10 @@ resource "azapi_resource" "mslearn_mcp_tool_server" {
             transport = "streamableHttp"
           }
           credentials = {
-            # Frustrating.  Per LLM, this only describes whether the parent Azure AI Gateway resource 
-            # needs to authenticate itself into the https://learn.microsoft.com/api/mcp "backend."
-            # Apparently "credentials" can't force the parent Azure AI Gateway resource to stop 
-            # requiring an Entra ID token to be attached to the Streamable HTTP JSON-RPC `tools/list` POST 
-            # call against https://BLAHBLAHBLAH.ai.gateway.azure.com/default/toolservers/mslearn-tools/mcp -- blegh.
+            # Frustrating.  Per LLM, `credentials` only configures the gateway's 
+            # outbound authentication to the MS Learn MCP backend, 
+            # but doesn't impact requirements for caller authentication into the gateway 
+            # when POSTing to https://BLAHBLAHBLAH.ai.gateway.azure.com/default/toolservers/mslearn-tools/mcp; blegh.
             type = "none"
           }
           required = true
