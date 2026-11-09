@@ -7,7 +7,7 @@ resource "random_string" "ai_gateway_name_suffix" {
 }
 
 resource "azapi_resource" "ai_gateway" {
-  type      = "Microsoft.ApiManagement/aigateways@2026-09-01-preview"
+  type      = "Microsoft.ApiManagement/aigateways@2025-09-01-preview"
   name      = "aigw${random_string.ai_gateway_name_suffix.result}"
   parent_id = var.resource_group.id
   location  = var.resource_group.location
@@ -16,9 +16,9 @@ resource "azapi_resource" "ai_gateway" {
   }
   body = {
     properties = {}
-    # sku = {
-    #   name = "Standard" # TODO:  downgrade once the free ride is over!
-    # }
+    sku = {
+      name = "Standard" # TODO:  downgrade once the free ride is over!
+    }
   }
   response_export_values    = ["*"]
   schema_validation_enabled = false

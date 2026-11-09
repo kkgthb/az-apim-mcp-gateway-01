@@ -9,7 +9,7 @@ locals {
 }
 
 resource "azapi_resource" "mslearn_mcp_tool_server" {
-  type      = "Microsoft.ApiManagement/aigateways/workspaces/toolServers@2026-09-01-preview"
+  type      = "Microsoft.ApiManagement/aigateways/workspaces/toolServers@2025-09-01-preview"
   name      = "mslearn-tools"
   parent_id = "${var.ai_gateway.id}/workspaces/default"
   body = {

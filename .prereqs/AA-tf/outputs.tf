@@ -2,8 +2,8 @@ output "resource_group_name" {
   value = azurerm_resource_group.my_resource_group.name
 }
 
-output "ai_gateway_name" {
-  value = module.ai_gateway.ai_gateway.name
+output "ai_gateway" {
+  value = module.ai_gateway.ai_gateway
 }
 
 output "mcp_server_gateway_url" {
