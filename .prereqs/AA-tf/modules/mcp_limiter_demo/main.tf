@@ -33,11 +33,23 @@ resource "azapi_resource" "mslearn_mcp_tool_server" {
             # outbound authentication to the MS Learn MCP backend, 
             # but doesn't impact requirements for the calling MCP client to authenticate into the gateway 
             # when POSTing to https://BLAHBLAHBLAH.ai.gateway.azure.com/default/toolservers/mslearn-tools/mcp 
-            # by attaching an `https://ai.azure.com/Data.All`-scoped Entra ID token.
+            # by attaching an `https://ai.azure.com/aigateway/Data.All`-scoped, 
+            # `https://azure-api.net/aigateway`-audienced, 
+            # appropriately-Azure-RBAC-role'd Entra ID token.
             # I think this is stupid because it means letting a potentially-leaky MCP client/harness 
             # handle a JWT token that was completely unnecessary to get the work done 
             # and now could potentially be leaked and used in replay attacks, credential harvesting infections, etc.
             # I think it's dumb that `Microsoft.ApiManagement/aigateways` 100% enforces ingress authentication into itself; blegh.
+            # Also, if we were, say, protecting an Outlook MCP server or something, 
+            # then this would, I believe, be where we set up the gateway to be able to use OAuth to do 
+            # delegated/on-behalf-of work for whoever is ultimately trying to get through to the Outlook MCP server.
+            # This would, I believe, be part of setting up the gateway to be able to 
+            # obtain an Outlook-scoped token on behalf of (OBO) whichever Entra ID passed 
+            # an `https://ai.azure.com/aigateway/Data.All`-scoped token into the gateway.
+            # I think.  That, or such a flow is simply impossible with `Microsoft.ApiManagement/aigateways` 
+            # and a `Microsoft.ApiManagement/aigateways` resource can only talk to a backend as itself under its own permissions.
+            # Which seems weird and to halfway defeat the point of "protecting" MCP servers, 
+            # so I must be misreading things.
             type = "none"
           }
           required = true
